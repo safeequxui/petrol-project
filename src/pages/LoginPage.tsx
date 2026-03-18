@@ -20,11 +20,11 @@ const LoginPage = () => {
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mx-auto mb-4">
             <Bug className="w-7 h-7 text-primary-foreground" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Easy Pest Control</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Easy Pest Control</h1>
           <p className="text-sm text-muted-foreground mt-1">Admin Panel Login</p>
         </div>
 
-        <form onSubmit={handleLogin} className="bg-card rounded-2xl p-8 card-shadow space-y-5">
+        <form onSubmit={handleLogin} className="bg-card rounded-2xl p-6 sm:p-8 card-shadow space-y-5">
           <div>
             <label className="text-sm font-medium text-card-foreground mb-1.5 block">Email</label>
             <input

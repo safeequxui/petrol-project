@@ -1,15 +1,23 @@
 import { useState } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Plus, Search, Eye, X, Clock, CheckCircle2 } from "lucide-react";
+import { Plus, Search, Eye, EyeOff, X, Clock, CheckCircle2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { useLeadsStore, type LeadStatus, type Lead } from "@/store/leadsStore";
+import { useLeadsStore, type LeadStatus, type Lead, type UrgencyLevel } from "@/store/leadsStore";
 
 const statusBadge: Record<LeadStatus, "info" | "warning" | "success" | "error" | "neutral"> = {
   New: "info", Contacted: "warning", "Quote Sent": "warning", Converted: "success", Lost: "error",
 };
 
 const statuses: LeadStatus[] = ["New", "Contacted", "Quote Sent", "Converted", "Lost"];
+
+const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
+const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"] as const;
+const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"] as const;
+
+function formatLeadId(id: number) {
+  return `LEAD-${String(id).padStart(4, "0")}`;
+}
 
 const LeadsPage = () => {
   const navigate = useNavigate();
@@ -21,6 +29,7 @@ const LeadsPage = () => {
   const [selectedLeadForQuote, setSelectedLeadForQuote] = useState<Lead | null>(null);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [quoteFormData, setQuoteFormData] = useState({ amount: "", contract: "", notes: "" });
+  const [showMoreFields, setShowMoreFields] = useState(false);
   
   // Form state for new lead
   const [formData, setFormData] = useState({
@@ -28,7 +37,13 @@ const LeadsPage = () => {
     phone: "",
     address: "",
     services: [] as string[],
-    notes: ""
+    amount: "",
+    expectedDateTime: "",
+    leadSource: "",
+    urgencyLevel: "Medium" as UrgencyLevel,
+    branch: "",
+    salesExecutive: "",
+    notes: "",
   });
   const [newService, setNewService] = useState("");
 
@@ -51,6 +66,20 @@ const LeadsPage = () => {
 
   const getServiceCount = (lead: Lead) => lead.services.length;
 
+  const formatViewedAt = (value: string | null) => {
+    if (!value) return "—";
+    const ts = Date.parse(value);
+    if (Number.isNaN(ts)) return value;
+    return new Date(ts).toLocaleString();
+  };
+
+  const setQuoteViewed = (leadId: number, nextViewed: boolean) => {
+    const nextViewedAt = nextViewed ? new Date().toISOString() : null;
+    updateLead(leadId, { quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt });
+    setSelectedLead((prev) => (prev && prev.id === leadId ? { ...prev, quoteIsViewed: nextViewed, quoteViewedAt: nextViewedAt } : prev));
+    toast.success(nextViewed ? "Marked as viewed" : "Marked as not viewed");
+  };
+
   const handleSendQuote = () => {
     if (selectedLeadForQuote && quoteFormData.amount && quoteFormData.contract) {
       updateLead(selectedLeadForQuote.id, {
@@ -58,6 +87,8 @@ const LeadsPage = () => {
         quoteAmount: parseInt(quoteFormData.amount),
         quoteContract: quoteFormData.contract,
         quoteNotes: quoteFormData.notes,
+        quoteIsViewed: false,
+        quoteViewedAt: null,
       });
       toast.success("Quote sent successfully!");
       setShowQuoteForm(false);
@@ -96,6 +127,13 @@ const LeadsPage = () => {
       phone: formData.phone,
       address: formData.address,
       services: formData.services,
+      amount: formData.amount.trim() ? Number(formData.amount) : null,
+      expectedDateTime: formData.expectedDateTime,
+      leadSource: formData.leadSource,
+      urgencyLevel: formData.urgencyLevel,
+      branch: formData.branch,
+      salesExecutive: formData.salesExecutive,
+      notes: formData.notes,
       status: "New",
       date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
       quoteIsViewed: false,
@@ -108,19 +146,26 @@ const LeadsPage = () => {
       phone: "",
       address: "",
       services: [],
-      notes: ""
+      amount: "",
+      expectedDateTime: "",
+      leadSource: "",
+      urgencyLevel: "Medium",
+      branch: "",
+      salesExecutive: "",
+      notes: "",
     });
+    setShowMoreFields(false);
     setShowForm(false);
   };
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-card-foreground">Leads</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Leads</h2>
           <p className="text-sm text-muted-foreground">Manage your sales pipeline</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
+        <button onClick={() => setShowForm(!showForm)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition-all text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
           <Plus className="w-4 h-4" /> Add New Lead
         </button>
       </div>
@@ -130,7 +175,7 @@ const LeadsPage = () => {
           <h3 className="text-sm font-semibold text-card-foreground">Quick Add Lead</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Name</label>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Info</label>
               <input 
                 value={formData.name}
                 onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
@@ -154,6 +199,27 @@ const LeadsPage = () => {
                 onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
                 className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
                 placeholder="Service address" 
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Urgency Level ( Low, High, Medium )</label>
+              <select
+                value={formData.urgencyLevel}
+                onChange={(e) => setFormData(prev => ({ ...prev, urgencyLevel: e.target.value as UrgencyLevel }))}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+              >
+                {urgencyLevels.map((u) => (
+                  <option key={u} value={u}>{u}</option>
+                ))}
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-xs font-medium text-muted-foreground mb-1 block">Expected Date & Time</label>
+              <input
+                type="datetime-local"
+                value={formData.expectedDateTime}
+                onChange={(e) => setFormData(prev => ({ ...prev, expectedDateTime: e.target.value }))}
+                className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
               />
             </div>
           </div>
@@ -188,16 +254,72 @@ const LeadsPage = () => {
               ))}
             </div>
           </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
-            <textarea 
-              value={formData.notes}
-              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-              className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20" 
-              rows={2} 
-              placeholder="Additional notes..." 
-            />
-          </div>
+          <button
+            onClick={() => setShowMoreFields((v) => !v)}
+            className="w-full px-4 py-2 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-sm font-semibold text-card-foreground"
+          >
+            {showMoreFields ? "Hide additional lead fields" : "Show additional lead fields"}
+          </button>
+
+          {showMoreFields && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Amount</label>
+                <input
+                  type="number"
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  placeholder="Expected amount"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Lead Source</label>
+                <select
+                  value={formData.leadSource}
+                  onChange={(e) => setFormData(prev => ({ ...prev, leadSource: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                >
+                  <option value="">Select lead source</option>
+                  {leadSources.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Branch</label>
+                <select
+                  value={formData.branch}
+                  onChange={(e) => setFormData(prev => ({ ...prev, branch: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                >
+                  <option value="">Select branch</option>
+                  {branches.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Sales Executive</label>
+                <input
+                  value={formData.salesExecutive}
+                  onChange={(e) => setFormData(prev => ({ ...prev, salesExecutive: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  placeholder="Name"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
+                <textarea 
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border" 
+                  rows={2} 
+                  placeholder="Additional notes..." 
+                />
+              </div>
+            </div>
+          )}
           <div className="flex gap-3">
             <button 
               onClick={handleSaveLead}
@@ -209,8 +331,9 @@ const LeadsPage = () => {
             <button 
               onClick={() => {
                 setShowForm(false);
-                setFormData({ name: "", phone: "", address: "", services: [], notes: "" });
+                setFormData({ name: "", phone: "", address: "", services: [], amount: "", expectedDateTime: "", leadSource: "", urgencyLevel: "Medium", branch: "", salesExecutive: "", notes: "" });
                 setNewService("");
+                setShowMoreFields(false);
               }}
               className="h-10 px-6 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg"
             >
@@ -220,71 +343,71 @@ const LeadsPage = () => {
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 max-w-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative w-full sm:flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search leads..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => setFilter("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => setFilter("All")} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === "All" ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === "All" ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>All</button>
           {statuses.map((s) => (
-            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${filter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{s}</button>
+            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${filter === s ? "text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)]" : "bg-card text-muted-foreground border border-border hover:bg-secondary"}`} style={filter === s ? { background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" } : {}}>{s}</button>
           ))}
         </div>
       </div>
 
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-border">
-            {["Name", "Phone", "Address", "Services", "Status", "Quote Status", "Date", "Action"].map((h) => (
-              <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-            ))}
-          </tr></thead>
-          <tbody>
-            {filtered.map((l) => {
-              const serviceCount = getServiceCount(l);
-              return (
-                <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                  <td className="px-5 py-3.5 font-semibold text-card-foreground">{l.name}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.phone}</td>
-                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.address}</td>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[1320px] text-sm">
+            <thead><tr className="border-b border-border">
+              {["Lead ID ( Automated Generated )", "Customer Info", "Services", "Amount", "Expected Date & Time", "Lead Source", "SE", "Urgency", "Status", "Date", "Quote Viewed", "Action"].map((h) => (
+                <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {filtered.map((l) => {
+                const serviceCount = getServiceCount(l);
+                return (
+                  <tr key={l.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                    <td className="px-5 py-3.5 font-semibold text-primary">{formatLeadId(l.id)}</td>
+                  <td className="px-5 py-3.5">
+                    <div className="space-y-0.5">
+                      <p className="font-semibold text-card-foreground">{l.name}</p>
+                      <p className="text-xs text-muted-foreground">{l.phone} • {l.address}</p>
+                    </div>
+                  </td>
                   <td className="px-5 py-3.5">
                     <div className="flex items-center gap-2">
                       <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">{serviceCount}</span>
                       <span className="text-xs text-muted-foreground">{serviceCount === 1 ? "Service" : "Services"}</span>
                     </div>
                   </td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{typeof l.amount === "number" ? `₹ ${l.amount.toLocaleString()}` : "—"}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.expectedDateTime ? new Date(l.expectedDateTime).toLocaleString() : "—"}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.leadSource || "—"}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs" title="Sales Executive">{l.salesExecutive?.trim() ? l.salesExecutive : "—"}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.urgencyLevel}</td>
                   <td className="px-5 py-3.5"><StatusBadge label={l.status} variant={statusBadge[l.status]} /></td>
+                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.date}</td>
                   <td className="px-5 py-3.5">
                     {l.status === "Quote Sent" ? (
-                      <div className="flex items-center gap-2">
-                        {l.quoteIsViewed ? (
-                          <div className="flex items-center gap-1 text-success">
-                            <Eye className="w-4 h-4" />
-                            <span className="text-xs font-medium">Viewed</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-warning">
-                            <Eye className="w-4 h-4 opacity-40" />
-                            <span className="text-xs font-medium">Not Viewed</span>
-                          </div>
-                        )}
-                      </div>
-                    ) : l.status === "Converted" ? (
-                      <div className="flex items-center gap-1 text-success">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-xs font-medium">Accepted</span>
-                      </div>
-                    ) : l.status === "Lost" ? (
-                      <div className="flex items-center gap-1 text-destructive">
-                        <X className="w-4 h-4" />
-                        <span className="text-xs font-medium">Rejected</span>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLead(l)}
+                        className={`inline-flex items-center justify-center w-9 h-9 rounded-lg border transition-colors ${
+                          l.quoteIsViewed
+                            ? "text-success border-success/20 bg-success/5 hover:bg-success/10"
+                            : "text-muted-foreground border-border bg-card hover:bg-secondary"
+                        }`}
+                        title={l.quoteIsViewed ? "Viewed by customer" : "Not viewed by customer"}
+                        aria-label={l.quoteIsViewed ? "Viewed" : "Not viewed"}
+                      >
+                        {l.quoteIsViewed ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
                     ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
+                      <span className="text-xs font-medium text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-5 py-3.5 text-muted-foreground text-xs">{l.date}</td>
                   <td className="px-5 py-3.5">
                     {l.status === "New" && (
                       <button
@@ -348,11 +471,12 @@ const LeadsPage = () => {
                       <span className="text-xs font-medium text-muted-foreground">—</span>
                     )}
                   </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Quote View Details Dropdown */}
@@ -388,6 +512,10 @@ const LeadsPage = () => {
                 <h4 className="text-sm font-semibold text-card-foreground mb-4">Lead Information</h4>
                 <div className="space-y-3">
                   <div>
+                    <p className="text-xs text-muted-foreground mb-1">Lead ID ( Automated Generated )</p>
+                    <p className="text-sm font-semibold text-primary">{formatLeadId(selectedLead.id)}</p>
+                  </div>
+                  <div>
                     <p className="text-xs text-muted-foreground mb-1">Company / Name</p>
                     <p className="text-sm font-semibold text-card-foreground">{selectedLead.name}</p>
                   </div>
@@ -399,6 +527,38 @@ const LeadsPage = () => {
                     <p className="text-xs text-muted-foreground mb-1">Phone Number</p>
                     <p className="text-sm font-semibold text-card-foreground">{selectedLead.phone}</p>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Urgency Level ( Low, High, Medium )</p>
+                      <p className="text-sm font-semibold text-card-foreground">{selectedLead.urgencyLevel}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Expected Date & Time</p>
+                      <p className="text-sm font-semibold text-card-foreground">{selectedLead.expectedDateTime ? new Date(selectedLead.expectedDateTime).toLocaleString() : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Lead Source</p>
+                      <p className="text-sm font-semibold text-card-foreground">{selectedLead.leadSource || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Branch</p>
+                      <p className="text-sm font-semibold text-card-foreground">{selectedLead.branch || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Sales Executive</p>
+                      <p className="text-sm font-semibold text-card-foreground">{selectedLead.salesExecutive || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Amount</p>
+                      <p className="text-sm font-semibold text-primary">{typeof selectedLead.amount === "number" ? `₹ ${selectedLead.amount.toLocaleString()}` : "—"}</p>
+                    </div>
+                  </div>
+                  {selectedLead.notes && (
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs text-muted-foreground mb-1">Notes</p>
+                      <p className="text-sm font-semibold text-card-foreground whitespace-pre-wrap">{selectedLead.notes}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -457,7 +617,7 @@ const LeadsPage = () => {
                   {selectedLead.quoteIsViewed && selectedLead.quoteViewedAt && (
                     <div className="pt-3 border-t border-border">
                       <p className="text-xs text-muted-foreground mb-1">Viewed On</p>
-                      <p className="text-sm font-semibold text-success">{selectedLead.quoteViewedAt}</p>
+                      <p className="text-sm font-semibold text-success">{formatViewedAt(selectedLead.quoteViewedAt)}</p>
                     </div>
                   )}
                 </div>
@@ -466,16 +626,36 @@ const LeadsPage = () => {
               {/* Action Buttons */}
               {selectedLead.status === "Quote Sent" && (
                 <div className="flex flex-col sm:flex-row gap-3 p-6">
-                  <button
-                    onClick={() => {
-                      closeModal();
-                      navigate(`/projects?convertLeadId=${selectedLead.id}`);
-                    }}
-                    className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all font-semibold text-sm"
-                    style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
-                  >
-                    Convert to Project
-                  </button>
+                  {selectedLead.quoteIsViewed ? (
+                    <button
+                      onClick={() => {
+                        closeModal();
+                        navigate(`/projects?convertLeadId=${selectedLead.id}`);
+                      }}
+                      className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all font-semibold text-sm"
+                      style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                    >
+                      Convert to Project
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setQuoteViewed(selectedLead.id, true)}
+                        className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all font-semibold text-sm"
+                        style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
+                      >
+                        Mark as Viewed
+                      </button>
+                      <button
+                        onClick={() => {
+                          toast.info("Reminder sent to customer");
+                        }}
+                        className="flex-1 h-10 text-warning border border-warning/20 rounded-lg hover:bg-warning/5 transition-all font-semibold text-sm"
+                      >
+                        Send Reminder
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
               {selectedLead.status === "Converted" && (

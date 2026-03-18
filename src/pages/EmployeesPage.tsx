@@ -95,11 +95,11 @@ const EmployeesPage = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-xl font-bold text-card-foreground">Employees</h2>
+        <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Employees</h2>
         <p className="text-sm text-muted-foreground">Track productivity and time management</p>
       </div>
 
-      <div className="relative max-w-xs">
+      <div className="relative w-full sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input
           value={search}

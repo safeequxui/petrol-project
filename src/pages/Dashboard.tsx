@@ -4,6 +4,7 @@ import { FolderKanban, CreditCard, Wallet, AlertTriangle, Plus, Wrench, Eye, Pac
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from "recharts";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { useLeadsStore, type UrgencyLevel } from "@/store/leadsStore";
 
 const revenueData = [
   { day: "Mon", expected: 4200, collected: 3800 },
@@ -55,6 +56,7 @@ const quickActions = [
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { addLead } = useLeadsStore();
   const [revenueFilter, setRevenueFilter] = useState("This Week");
   const [serviceFilter, setServiceFilter] = useState("This Week");
   const [servicesTableFilter, setServicesTableFilter] = useState("Recent");
@@ -64,11 +66,18 @@ const Dashboard = () => {
   const [showServicesTableDropdown, setShowServicesTableDropdown] = useState(false);
   const [showServiceBreakdownDropdown, setShowServiceBreakdownDropdown] = useState(false);
   const [showAddLeadModal, setShowAddLeadModal] = useState(false);
+  const [showLeadMoreFields, setShowLeadMoreFields] = useState(false);
   const [leadFormData, setLeadFormData] = useState({
     name: "",
     phone: "",
     address: "",
-    services: [],
+    services: [] as string[],
+    amount: "",
+    expectedDateTime: "",
+    leadSource: "",
+    urgencyLevel: "Medium" as UrgencyLevel,
+    branch: "",
+    salesExecutive: "",
     notes: "",
   });
   const [serviceSearch, setServiceSearch] = useState("");
@@ -86,6 +95,35 @@ const Dashboard = () => {
   const filterOptions = ["This Week", "This Month", "This Year"];
   const servicesTableOptions = ["Recent", "This Week", "This Month", "All Time"];
   const serviceBreakdownOptions = ["Today", "This Week", "This Month"];
+  const urgencyLevels: UrgencyLevel[] = ["Low", "Medium", "High"];
+  const leadSources = ["Website", "Call", "Referral", "Walk-in", "Google", "Facebook/Instagram", "Other"];
+  const branches = ["Kochi", "Calicut", "Thrissur", "Trivandrum", "Palakkad", "Munnar", "Other"];
+
+  const canSaveLead = Boolean(
+    leadFormData.name.trim() &&
+    leadFormData.phone.trim() &&
+    leadFormData.address.trim() &&
+    leadFormData.services.length > 0
+  );
+
+  const resetLeadForm = () => {
+    setLeadFormData({
+      name: "",
+      phone: "",
+      address: "",
+      services: [],
+      amount: "",
+      expectedDateTime: "",
+      leadSource: "",
+      urgencyLevel: "Medium",
+      branch: "",
+      salesExecutive: "",
+      notes: "",
+    });
+    setServiceSearch("");
+    setShowLeadServiceDropdown(false);
+    setShowLeadMoreFields(false);
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -390,74 +428,99 @@ const Dashboard = () => {
       {/* Add New Lead Modal */}
       {showAddLeadModal && (
         <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 animate-in fade-in duration-300">
-          <div className="bg-white w-full h-full md:w-full md:h-auto md:rounded-xl md:shadow-lg md:max-w-md mx-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-card w-full h-full md:w-full md:h-auto md:rounded-xl md:shadow-lg md:max-w-md mx-4 animate-in fade-in slide-in-from-top-2 duration-300 border border-border">
             <div className="p-6 space-y-5">
               {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-800">Add New Lead</h3>
+                <h3 className="text-lg font-bold text-card-foreground">Add New Lead</h3>
                 <button
-                  onClick={() => setShowAddLeadModal(false)}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                  onClick={() => {
+                    setShowAddLeadModal(false);
+                    resetLeadForm();
+                  }}
+                  className="p-1 hover:bg-secondary rounded-lg transition-colors"
                 >
-                  <X className="w-5 h-5 text-gray-600" />
+                  <X className="w-5 h-5 text-muted-foreground" />
                 </button>
               </div>
 
-              {/* Lead Name */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Lead Name</label>
-                <input
-                  type="text"
-                  placeholder="Enter lead name"
-                  value={leadFormData.name}
-                  onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Customer Info</label>
+                  <input
+                    type="text"
+                    placeholder="Customer name"
+                    value={leadFormData.name}
+                    onChange={(e) => setLeadFormData({ ...leadFormData, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
 
-              {/* Phone Number */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Phone Number</label>
-                <input
-                  type="tel"
-                  placeholder="Enter phone number"
-                  value={leadFormData.phone}
-                  onChange={(e) => setLeadFormData({ ...leadFormData, phone: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
-                />
-              </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="Phone number"
+                    value={leadFormData.phone}
+                    onChange={(e) => setLeadFormData({ ...leadFormData, phone: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
 
-              {/* Address */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Address</label>
-                <input
-                  type="text"
-                  placeholder="Enter address"
-                  value={leadFormData.address}
-                  onChange={(e) => setLeadFormData({ ...leadFormData, address: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
-                />
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Address</label>
+                  <input
+                    type="text"
+                    placeholder="Service address"
+                    value={leadFormData.address}
+                    onChange={(e) => setLeadFormData({ ...leadFormData, address: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Urgency Level ( Low, High, Medium )</label>
+                  <select
+                    value={leadFormData.urgencyLevel}
+                    onChange={(e) => setLeadFormData({ ...leadFormData, urgencyLevel: e.target.value as UrgencyLevel })}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  >
+                    {urgencyLevels.map((u) => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground mb-1 block">Expected Date & Time</label>
+                  <input
+                    type="datetime-local"
+                    value={leadFormData.expectedDateTime}
+                    onChange={(e) => setLeadFormData({ ...leadFormData, expectedDateTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                  />
+                </div>
               </div>
 
               {/* Services */}
               <div ref={leadServiceDropdownRef}>
-                <label className="text-sm font-medium text-gray-700 mb-3 block">Services</label>
+                <label className="text-xs font-medium text-muted-foreground mb-1 block">Services</label>
                 
                 {/* Search Input */}
                 <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search services..."
                     value={serviceSearch}
                     onChange={(e) => setServiceSearch(e.target.value)}
                     onFocus={() => setShowLeadServiceDropdown(true)}
-                    className="w-full pl-9 pr-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100"
+                    className="w-full pl-9 pr-4 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
                   />
                   
                   {/* Service Dropdown - Inside Modal */}
                   {showLeadServiceDropdown && filteredServices.length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-blue-100 rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
+                    <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-lg shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filteredServices.map((service) => (
                         <button
                           key={service}
@@ -466,7 +529,7 @@ const Dashboard = () => {
                             setServiceSearch("");
                             setShowLeadServiceDropdown(false);
                           }}
-                          className="w-full text-left px-4 py-2.5 text-sm text-blue-600 hover:bg-blue-50 transition-colors border-b border-blue-50 last:border-0"
+                          className="w-full text-left px-4 py-2 text-sm text-primary hover:bg-secondary transition-colors border-b border-border last:border-0"
                         >
                           {service}
                         </button>
@@ -476,16 +539,16 @@ const Dashboard = () => {
                 </div>
 
                 {/* Selected Services Tags */}
-                <div className="bg-blue-50 rounded-lg p-3 border border-blue-100 min-h-[44px] flex flex-wrap gap-2 items-center">
+                <div className="bg-secondary/30 rounded-lg p-3 border border-border min-h-[44px] flex flex-wrap gap-2 items-center">
                   {leadFormData.services.length === 0 ? (
-                    <span className="text-sm text-gray-400">No services selected</span>
+                    <span className="text-sm text-muted-foreground">No services selected</span>
                   ) : (
                     leadFormData.services.map((service) => (
-                      <div key={service} className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                        <span>{service}</span>
+                      <div key={service} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium border border-primary/20">
+                        <span className="text-xs font-medium">{service}</span>
                         <button
                           onClick={() => setLeadFormData({ ...leadFormData, services: leadFormData.services.filter(s => s !== service) })}
-                          className="hover:text-blue-900 transition-colors"
+                          className="hover:text-primary/70 transition-colors"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -495,32 +558,109 @@ const Dashboard = () => {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Notes</label>
-                <textarea
-                  placeholder="Add any special notes or requirements..."
-                  value={leadFormData.notes}
-                  onChange={(e) => setLeadFormData({ ...leadFormData, notes: e.target.value })}
-                  rows={3}
-                  className="w-full px-4 py-2.5 rounded-lg bg-blue-50 text-sm text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-300 border border-blue-100 resize-none"
-                />
-              </div>
+              <button
+                onClick={() => setShowLeadMoreFields((v) => !v)}
+                className="w-full px-4 py-2 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors text-sm font-semibold text-card-foreground"
+              >
+                {showLeadMoreFields ? "Hide additional lead fields" : "Show additional lead fields"}
+              </button>
+
+              {showLeadMoreFields && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Amount</label>
+                    <input
+                      type="number"
+                      value={leadFormData.amount}
+                      onChange={(e) => setLeadFormData({ ...leadFormData, amount: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                      placeholder="Expected amount"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Lead Source</label>
+                    <select
+                      value={leadFormData.leadSource}
+                      onChange={(e) => setLeadFormData({ ...leadFormData, leadSource: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                    >
+                      <option value="">Select lead source</option>
+                      {leadSources.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Branch</label>
+                    <select
+                      value={leadFormData.branch}
+                      onChange={(e) => setLeadFormData({ ...leadFormData, branch: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                    >
+                      <option value="">Select branch</option>
+                      {branches.map((b) => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Sales Exicutive</label>
+                    <input
+                      value={leadFormData.salesExecutive}
+                      onChange={(e) => setLeadFormData({ ...leadFormData, salesExecutive: e.target.value })}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border"
+                      placeholder="Name"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Notes</label>
+                    <textarea
+                      placeholder="Additional notes..."
+                      value={leadFormData.notes}
+                      onChange={(e) => setLeadFormData({ ...leadFormData, notes: e.target.value })}
+                      rows={3}
+                      className="w-full px-3 py-2 rounded-lg bg-secondary text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 border border-border resize-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-3 pt-2">
                 <button
-                  onClick={() => setShowAddLeadModal(false)}
-                  className="flex-1 h-10 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm"
+                  onClick={() => {
+                    setShowAddLeadModal(false);
+                    resetLeadForm();
+                  }}
+                  className="flex-1 h-10 border border-border text-card-foreground rounded-lg hover:text-primary transition-colors font-medium text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => {
+                    if (!canSaveLead) return;
+                    addLead({
+                      name: leadFormData.name,
+                      phone: leadFormData.phone,
+                      address: leadFormData.address,
+                      services: leadFormData.services,
+                      amount: leadFormData.amount.trim() ? Number(leadFormData.amount) : null,
+                      expectedDateTime: leadFormData.expectedDateTime,
+                      leadSource: leadFormData.leadSource,
+                      urgencyLevel: leadFormData.urgencyLevel,
+                      branch: leadFormData.branch,
+                      salesExecutive: leadFormData.salesExecutive,
+                      notes: leadFormData.notes,
+                      status: "New",
+                      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                      quoteIsViewed: false,
+                      quoteViewedAt: null,
+                    });
                     setShowAddLeadModal(false);
+                    resetLeadForm();
                     navigate("/leads");
                   }}
-                  className="flex-1 h-10 text-white rounded-lg hover:opacity-90 shadow-lg transition-all font-semibold text-sm"
+                  className={`flex-1 h-10 text-white rounded-lg transition-all font-semibold text-sm shadow-[0px_5px_12px_rgba(39,47,158,0.2)] ${canSaveLead ? "hover:opacity-90" : "opacity-60 cursor-not-allowed"}`}
                   style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}
                 >
                   Save & Go to Leads

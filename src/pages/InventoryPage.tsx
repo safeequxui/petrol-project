@@ -20,12 +20,12 @@ const InventoryPage = () => {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-card-foreground">Inventory</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-card-foreground">Inventory</h2>
           <p className="text-sm text-muted-foreground">Branch-wise chemical stock management</p>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
+        <button onClick={() => setShowAdd(!showAdd)} className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
           <Plus className="w-4 h-4" /> Add Inventory
         </button>
       </div>
@@ -47,38 +47,40 @@ const InventoryPage = () => {
               </div>
             ))}
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <button className="h-10 px-6 text-sm font-semibold hover:opacity-90 text-white shadow-[0px_5px_12px_rgba(39,47,158,0.2)] transition-all rounded-lg" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>Add Item</button>
             <button onClick={() => setShowAdd(false)} className="h-10 px-6 border border-border text-card-foreground text-sm font-medium hover:text-primary transition-colors rounded-lg">Cancel</button>
           </div>
         </div>
       )}
 
-      <div className="relative max-w-xs">
+      <div className="relative w-full sm:max-w-xs">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search chemicals..." className="w-full pl-9 pr-4 py-2 rounded-lg bg-card text-sm border border-border focus:outline-none focus:ring-2 focus:ring-primary/20" />
       </div>
 
       <div className="bg-card rounded-xl card-shadow overflow-hidden">
-        <table className="w-full text-sm">
-          <thead><tr className="border-b border-border">
-            {["Chemical", "Branch", "Stock", "Unit", "Reorder Level", "Status"].map((h) => (
-              <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
-            ))}
-          </tr></thead>
-          <tbody>
-            {filtered.map((i) => (
-              <tr key={i.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
-                <td className="px-5 py-3.5 font-medium text-card-foreground">{i.name}</td>
-                <td className="px-5 py-3.5 text-muted-foreground">{i.branch}</td>
-                <td className={`px-5 py-3.5 font-bold ${i.status === "Critical" ? "text-destructive" : i.status === "Low" ? "text-warning" : "text-card-foreground"}`}>{i.stock}</td>
-                <td className="px-5 py-3.5 text-muted-foreground">{i.unit}</td>
-                <td className="px-5 py-3.5 text-muted-foreground">{i.reorder}</td>
-                <td className="px-5 py-3.5"><StatusBadge label={i.status} variant={statusMap[i.status as keyof typeof statusMap]} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead><tr className="border-b border-border">
+              {["Chemical", "Branch", "Stock", "Unit", "Reorder Level", "Status"].map((h) => (
+                <th key={h} className="text-left px-5 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {filtered.map((i) => (
+                <tr key={i.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
+                  <td className="px-5 py-3.5 font-medium text-card-foreground">{i.name}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{i.branch}</td>
+                  <td className={`px-5 py-3.5 font-bold ${i.status === "Critical" ? "text-destructive" : i.status === "Low" ? "text-warning" : "text-card-foreground"}`}>{i.stock}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{i.unit}</td>
+                  <td className="px-5 py-3.5 text-muted-foreground">{i.reorder}</td>
+                  <td className="px-5 py-3.5"><StatusBadge label={i.status} variant={statusMap[i.status as keyof typeof statusMap]} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

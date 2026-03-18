@@ -3,6 +3,8 @@ import {
   LayoutDashboard, Users, FolderKanban, Wrench, CreditCard,
   Package, UserCog, UserCircle, FileText, LogOut, Bug
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { FC } from "react";
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/" },
@@ -16,12 +18,17 @@ const menuItems = [
   { label: "Customers", icon: UserCircle, path: "/customers" },
 ];
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  className?: string;
+  onNavigate?: () => void;
+};
+
+export const AppSidebar: FC<AppSidebarProps> = ({ className, onNavigate }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
   return (
-    <aside className="w-64 min-h-screen bg-card border-r border-border flex flex-col shrink-0">
+    <aside className={cn("w-64 min-h-svh bg-card border-r border-border flex flex-col shrink-0", className)}>
       <div className="p-6 flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(138.75deg, #942BF4 -42.53%, #1E2F96 94.59%)" }}>
           <Bug className="w-5 h-5 text-white" />
@@ -39,6 +46,7 @@ export function AppSidebar() {
             <Link
               key={item.path}
               to={item.path}
+              onClick={onNavigate}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 active
                   ? "bg-secondary text-primary"
@@ -62,7 +70,10 @@ export function AppSidebar() {
             <p className="text-[11px] text-muted-foreground">Branch Manager</p>
           </div>
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => {
+              navigate("/login");
+              onNavigate?.();
+            }}
             className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
           >
             <LogOut className="w-4 h-4" />
@@ -71,4 +82,4 @@ export function AppSidebar() {
       </div>
     </aside>
   );
-}
+};

@@ -11,7 +11,7 @@ import PaymentsPage from "./pages/PaymentsPage";
 import ReportsPage from "./pages/ReportsPage";
 import InventoryPage from "./pages/InventoryPage";
 import EmployeesPage from "./pages/EmployeesPage";
-import CustomersPage from "./pages/CustomersPage";
+import CustomersPage, { CustomerDetailPage } from "./pages/CustomersPage";
 import LoginPage from "./pages/LoginPage";
 import NotFound from "./pages/NotFound";
 import ProjectsPage from "./pages/ProjectsPage";
@@ -36,6 +36,7 @@ const App = () => (
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/customers/:id" element={<CustomerDetailPage />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
